@@ -53,7 +53,7 @@ SOFTWARE.
 
 # Instructions:
 # 1. Create a Mastodon Application, with read:lists permissions, and copy the Access Token.
-# 2. Either hardcode the access token below in GLOBAL VARIABLES or add it into an environment variable called MASTOTOKEN
+# 2. Either hardcode the access token below in GLOBAL VARIABLES or, better yet, add it into an environment variable called MASTOLISTTOKEN
 # 3. On your Mac or Linux box: pip install Mastodon.py (or pip3)
 # 4. Run this script once with the --reset argument, to create the required saved file containing your lists and their members
 # 5. Run this script at any time again without the --reset argument, to compare the currect lists & members to what you had saved,
@@ -61,52 +61,79 @@ SOFTWARE.
 # 6. Once you've fixed any issues in your Mastodon Lists (added missing people back, etc), and you're happy with the output from this script, 
 #    then re-run it with the --reset argument to save the current list+members state (overwriting the previously saved state)
 
+# Optional instructions:
+# 1. If you have a 2nd Mastodon account that you post status updates into for yourself (that you follow on your main account),
+#    then add the access token of that account into 'postTOKEN' in the OPTIONAL section or, better yet, into an environment variable called MASTOPOSTTOKEN
+# 2. Set postToMasto to True in GLOBAL VARIABLES
+
 ##############################################################################
 ##############################################################################
 ##############################################################################
 
 import os
-import pickle
+import json
 import sys
 from mastodon import Mastodon
 
 #################### GLOBAL VARIABLES ##################
 ### Change as needed
-TOKEN = os.environ["MASTOTOKEN"]         # Mastodon access_token, needs read:lists permission
-INSTANCE = "https://hachyderm.io"
-SAVEFILE = "masto_get_list_members.pkl"
-debug = True
+TOKEN = os.environ["MASTOLISTTOKEN"]         # Mastodon access_token, needs read:lists permission
+INSTANCE = "hachyderm.io"                    # NB: only the domain -- don't add http:// or https://, or the api path
+SAVEFILE = "masto_get_list_members.json"
+debug = True                                 # Change this to False to suppress listing accounts that have NOT dropped out of your lists
+postToMasto = True                           # Change this to False if you don't want it to post the missing accounts to Mastodon
 ########################################################
 
-mastodon = Mastodon(access_token = TOKEN, api_base_url = INSTANCE)
+########################################################
+### START OPTIONAL
+### These are only needed if you have a 2nd Mastodon account + token
+### used to write posts into (that you follow on your main account)
+### AND you want to post dropped-out-account status updates to that Mastodon account
+postTOKEN = os.environ["MASTOPOSTTOKEN"]   # Mastodon access_token, needs write:statuses permission
+postInstance = Mastodon(access_token = postTOKEN, api_base_url = f"https://{INSTANCE}")
+def _postToMasto(listId, listName, acctName):
+  global postInstance
+  status  =  "An account dropped out of one of your lists:\n\n"
+  status += f'List: "{listName}" (id:{listId})\n'
+  if "@" in acctName:
+    status += f"Acct: {acctName}"
+  else:
+    status += f"Acct: {acctName}@{INSTANCE}"
+  postInstance.status_post(status, visibility="private")
+### END OPTIONAL
+########################################################
+
+# Let's get our main Mastodon instance
+mastodon = Mastodon(access_token = TOKEN, api_base_url = f"https://{INSTANCE}")
 
 # Let's get all our current Lists and their members (accounts)
 currentlists = {}
 for entry in mastodon.lists():
-  entryId = entry['id']
+  entryId = str(entry['id'])
   entryTitle = entry['title']
   currentlists[entryId] = {}
   currentlists[entryId]['title'] = entryTitle
   currentlists[entryId]['accounts'] = []
-  m = mastodon.list_accounts(entryId, limit=10)
+  m = mastodon.list_accounts(entryId, limit=40)
   while len(m) > 0:
+    # Getting 40 list members at a time, so page through results
     currentlists[entryId]['accounts'] += [ i['acct'] for i in m ]
     max_id = m[-1]['id']
     m = mastodon.list_accounts(entryId, limit=40, max_id=max_id)
 
 # If run with --reset, let's save the retrieved Lists+Members into SAVEFILE
 if len(sys.argv) > 1 and sys.argv[1] == "--reset":
-  with open(SAVEFILE, 'wb') as f:
-    pickle.dump(currentlists, f)
-  print("Saved current state of lists out to 'masto_get_list_members.pkl'...")
+  with open(SAVEFILE, 'w') as f:
+    json.dump(currentlists, f)
+  print(f"Saved current state of lists out to '{SAVEFILE}'...")
   for i in currentlists:
     print(f"ID:{i} NAME:{currentlists[i]['title']} MEMBERCOUNT:{len(currentlists[i]['accounts'])}")
   sys.exit(0)
 
 # Wasn't run with --reset, so let's read old Lists+Members state from SAVEFILE (and then compare to live/current state)
 oldlists = {}
-with open(SAVEFILE, 'rb') as f:
-  oldlists = pickle.load(f)
+with open(SAVEFILE, 'r') as f:
+  oldlists = json.load(f)
 
 # Compare old (saved) state to current/live state, and report.
 for oldId in oldlists:
@@ -117,4 +144,7 @@ for oldId in oldlists:
         if debug:
           print("Good   : ", oldId, oldlists[oldId]['title'], oldAcct)
       else:
-        print("MISSING:", oldId, oldlists[oldId]['title'], oldAcct)
+        print("MISSING: ", oldId, oldlists[oldId]['title'], oldAcct)
+        if postToMasto:
+          # Also OPTIONALLY post this to a Mastodon account
+          _postToMasto(oldId, oldlists[oldId]['title'], oldAcct)
