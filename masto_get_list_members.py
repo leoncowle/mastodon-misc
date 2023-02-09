@@ -1,74 +1,79 @@
 #!/usr/bin/env python3.9
 
+""" 
 ##############################################################################
 ##############################################################################
 ##############################################################################
 
-# Background:  You use Lists in Mastodon.
-#              Someone you follow, who you also have in 1 or more lists, moves
-#              their Mastodon account to a new instance/server.
-#              Mastodon will (should) automatically follow the moved-to-account
-#              for you.
-#              HOWEVER, the person's new account will NOT be added to any lists
-#              automatically, and their old account will SILENTLY be dropped
-#              from any of your lists that it was a member of.
-#              This is not ideal. :-)
-
-# Description: short script that saves your current Mastodon Lists' members
-#              into a file (when using the '--reset' flag) and then at any later
-#              time, compares that saved file's content to the current Lists'
-#              members, to see if any accounts have dropped out of any lists.
-
-# Author: Leon Cowle
-# Copyright (c) 2023 Leon Cowle
-# Version 0.1
-# License:
-"""
-
-MIT License
-
+Author: Leon Cowle
 Copyright (c) 2023 Leon Cowle
+Version 0.1
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Background:  You use Lists in Mastodon.
+             Someone you follow, who you also have in 1 or more lists, moves
+             their Mastodon account to a new instance/server.
+             Mastodon will (should) automatically follow the moved-to-account
+             for you.
+             HOWEVER, the person's new account will NOT be added to any lists
+             automatically, and their old account will SILENTLY be dropped
+             from any of your lists that it was a member of.
+             This is not ideal. :-)
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Description: short script that saves your current Mastodon Lists' members
+             into a file (when using the '--reset' flag) and then at any later
+             time, compares that saved file's content to the current Lists'
+             members, to see if any accounts have dropped out of any lists.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+License:
 
+   MIT License
+
+   Copyright (c) 2023 Leon Cowle
+
+   Permission is hereby granted, free of charge, to any person obtaining a copy
+   of this software and associated documentation files (the "Software"), to deal
+   in the Software without restriction, including without limitation the rights
+   to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   copies of the Software, and to permit persons to whom the Software is
+   furnished to do so, subject to the following conditions:
+
+   The above copyright notice and this permission notice shall be included in all
+   copies or substantial portions of the Software.
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+Acknowledgments:
+  https://github.com/halcy/Mastodon.py by https://icosahedron.website/@halcy
+
+Instructions:
+1. Create a Mastodon Application, with read:lists permissions, and copy the Access Token.
+2. Either hardcode the access token below in GLOBAL VARIABLES or, better yet, 
+   add it into an environment variable called MASTOLISTTOKEN
+3. On your Mac or Linux box: pip install Mastodon.py (or pip3)
+4. Run this script once with the --reset argument, to create the required saved 
+   file containing your lists and their members
+5. Run this script at any time again without the --reset argument, to compare the 
+   currect lists & members to what you had saved, to see if any accounts had dropped out of any lists.
+6. Once you've fixed any issues in your Mastodon Lists (added missing people back, etc), 
+   and you're happy with the output from this script, then re-run it with the --reset argument to save
+   the current list+members state (overwriting the previously saved state)
+
+Optional instructions:
+1. If you have a 2nd Mastodon account that you post status updates into for yourself (that you follow
+   on your main account), then add the access token of that account into 'postTOKEN' in the OPTIONAL 
+   section or, better yet, into an environment variable called MASTOPOSTTOKEN
+2. Set postToMasto to True in GLOBAL VARIABLES
+
+##############################################################################
+##############################################################################
+##############################################################################
 """
-# Acknowledgments:
-#   https://github.com/halcy/Mastodon.py by https://icosahedron.website/@halcy
-
-# Instructions:
-# 1. Create a Mastodon Application, with read:lists permissions, and copy the Access Token.
-# 2. Either hardcode the access token below in GLOBAL VARIABLES or, better yet, add it into an environment variable called MASTOLISTTOKEN
-# 3. On your Mac or Linux box: pip install Mastodon.py (or pip3)
-# 4. Run this script once with the --reset argument, to create the required saved file containing your lists and their members
-# 5. Run this script at any time again without the --reset argument, to compare the currect lists & members to what you had saved,
-#    to see if any accounts had dropped out of any lists.
-# 6. Once you've fixed any issues in your Mastodon Lists (added missing people back, etc), and you're happy with the output from this script, 
-#    then re-run it with the --reset argument to save the current list+members state (overwriting the previously saved state)
-
-# Optional instructions:
-# 1. If you have a 2nd Mastodon account that you post status updates into for yourself (that you follow on your main account),
-#    then add the access token of that account into 'postTOKEN' in the OPTIONAL section or, better yet, into an environment variable called MASTOPOSTTOKEN
-# 2. Set postToMasto to True in GLOBAL VARIABLES
-
-##############################################################################
-##############################################################################
-##############################################################################
 
 import os
 import json
