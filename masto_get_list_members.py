@@ -82,11 +82,11 @@ from mastodon import Mastodon
 
 #################### GLOBAL VARIABLES ##################
 ### Change as needed
-TOKEN = os.environ["MASTOLISTTOKEN"]         # Mastodon access_token, needs read:lists permission
-INSTANCE = "hachyderm.io"                    # NB: only the domain -- don't add http:// or https://, or the api path
-SAVEFILE = "masto_get_list_members.json"
-debug = False                                 # Change this to False to suppress listing accounts that have NOT dropped out of your lists
-postToMasto = True                           # Change this to False if you don't want it to post the missing accounts to Mastodon
+TOKEN = os.environ["MASTOLISTTOKEN"]          # Mastodon access_token, needs read:lists permission
+INSTANCE = "hachyderm.io"                     # NB: only the domain -- don't add http:// or https://, or the api path
+SAVEFILE = "masto_get_list_members.json"      # File you want to save the current state of your lists into
+debug = False                                 # Change this to True to also show accounts that exist in your current lists AND in the saved file
+postToMasto = False                           # Change this to True if you want to post the missing accounts to Mastodon
 ########################################################
 
 ########################################################
@@ -94,8 +94,9 @@ postToMasto = True                           # Change this to False if you don't
 ### These are only needed if you have a 2nd Mastodon account + token
 ### used to write posts into (that you follow on your main account)
 ### AND you want to post dropped-out-account status updates to that Mastodon account
-postTOKEN = os.environ["MASTOPOSTTOKEN"]   # Mastodon access_token, needs write:statuses permission
-postInstance = Mastodon(access_token = postTOKEN, api_base_url = f"https://{INSTANCE}")
+if postToMasto:
+  postTOKEN = os.environ["MASTOPOSTTOKEN"]   # Mastodon access_token, needs write:statuses permission
+  postInstance = Mastodon(access_token = postTOKEN, api_base_url = f"https://{INSTANCE}")
 def _postToMasto(listId, listName, acctName):
   global postInstance
   status  =  "An account dropped out of one of your lists:\n\n"
