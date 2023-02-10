@@ -7,7 +7,7 @@
 
 Author: Leon Cowle
 Copyright (c) 2023 Leon Cowle
-Version 0.1
+Version 0.1 -- 2023/02/09
 
 Background:  You use Lists in Mastodon.
              Someone you follow, who you also have in 1 or more lists, moves
@@ -20,7 +20,7 @@ Background:  You use Lists in Mastodon.
              This is not ideal. :-)
 
 Description: short script that saves your current Mastodon Lists' members
-             into a file (when using the '--reset' flag) and then at any later
+             into a file (when using the '--savecurrent' flag) and then at any later
              time, compares that saved file's content to the current Lists'
              members, to see if any accounts have dropped out of any lists.
 
@@ -56,13 +56,13 @@ Instructions:
 2. Either hardcode the access token below in GLOBAL VARIABLES or, better yet, 
    add it into an environment variable called MASTOLISTTOKEN
 3. On your Mac or Linux box: pip install Mastodon.py (or pip3)
-4. Run this script once with the --reset argument, to create the required saved 
+4. Run this script once (with or without the --savecurrent arg), to create the initial required saved 
    file containing your lists and their members
-5. Run this script at any time again without the --reset argument, to compare the 
+5. Run this script at any time again without the --savecurrent argument, to compare the 
    currect lists & members to what you had saved, to see if any accounts had dropped out of any lists.
 6. Once you've fixed any issues in your Mastodon Lists (added missing people back, etc), 
-   and you're happy with the output from this script, then re-run it with the --reset argument to save
-   the current list+members state (overwriting the previously saved state)
+   and you're happy with the output from this script, then re-run it with the --savecurrent argument
+   to save the current list+members state (overwriting the previously saved state)
 
 Optional instructions:
 1. If you have a 2nd Mastodon account that you post status updates into for yourself (that you follow
@@ -85,7 +85,7 @@ from mastodon import Mastodon
 TOKEN = os.environ["MASTOLISTTOKEN"]         # Mastodon access_token, needs read:lists permission
 INSTANCE = "hachyderm.io"                    # NB: only the domain -- don't add http:// or https://, or the api path
 SAVEFILE = "masto_get_list_members.json"
-debug = True                                 # Change this to False to suppress listing accounts that have NOT dropped out of your lists
+debug = False                                 # Change this to False to suppress listing accounts that have NOT dropped out of your lists
 postToMasto = True                           # Change this to False if you don't want it to post the missing accounts to Mastodon
 ########################################################
 
@@ -126,8 +126,8 @@ for entry in mastodon.lists():
     max_id = m[-1]['id']
     m = mastodon.list_accounts(entryId, limit=40, max_id=max_id)
 
-# If run with --reset, let's save the retrieved Lists+Members into SAVEFILE
-if len(sys.argv) > 1 and sys.argv[1] == "--reset":
+# If run with --savecurrent, let's save the retrieved Lists+Members into SAVEFILE
+if not os.path.exists(SAVEFILE) or (len(sys.argv) > 1 and sys.argv[1] == "--savecurrent"):
   with open(SAVEFILE, 'w') as f:
     json.dump(currentlists, f)
   print(f"Saved current state of lists out to '{SAVEFILE}'...")
@@ -135,21 +135,45 @@ if len(sys.argv) > 1 and sys.argv[1] == "--reset":
     print(f"ID:{i} NAME:{currentlists[i]['title']} MEMBERCOUNT:{len(currentlists[i]['accounts'])}")
   sys.exit(0)
 
-# Wasn't run with --reset, so let's read old Lists+Members state from SAVEFILE (and then compare to live/current state)
+# Wasn't run with --savecurrent, so let's read old Lists+Members state from SAVEFILE (and then compare to live/current state)
 oldlists = {}
 with open(SAVEFILE, 'r') as f:
   oldlists = json.load(f)
+
+print()
+
+foundNew = False
+
+setOldLists = set(oldlists.keys())
+setCurLists = set(currentlists.keys())
+for newlistId in setCurLists.difference(setOldLists):
+  if debug:
+    print(f"INFO: New list found that isn't in your saved file (so not checking its members): {currentlists[newlistId]['title']} (id:{newlistId})")
+  foundNew = True
 
 # Compare old (saved) state to current/live state, and report.
 for oldId in oldlists:
   if oldId in currentlists:
     # oldId is still there in currentlists (i.e. the list hasn't been deleted)
-    for oldAcct in oldlists[oldId]['accounts']:
-      if oldAcct in currentlists[oldId]['accounts']:
-        if debug:
-          print("Good   : ", oldId, oldlists[oldId]['title'], oldAcct)
-      else:
-        print("MISSING: ", oldId, oldlists[oldId]['title'], oldAcct)
-        if postToMasto:
-          # Also OPTIONALLY post this to a Mastodon account
-          _postToMasto(oldId, oldlists[oldId]['title'], oldAcct)
+    setOld = set(oldlists[oldId]['accounts'])
+    setCur = set(currentlists[oldId]['accounts'])
+    if debug:
+      for inBoth in setOld & setCur:
+        print(f"INFO: List member that appears in your saved file AND in the same current list: {oldlists[oldId]['title']} (id:{oldId}) : {inBoth}")
+    for newacct in setCur.difference(setOld):
+      if debug:
+        print(f"INFO: New list member found that isn't in your saved file: {oldlists[oldId]['title']} (id:{oldId}) : {newacct}")
+      foundNew = True
+    for missing in setOld.difference(setCur):
+      print(f"WARNING: A list member has been removed from a list: {oldlists[oldId]['title']} (id:{oldId}) : {missing}")
+      if postToMasto:
+        # Also OPTIONALLY post this to a Mastodon account
+        _postToMasto(oldId, oldlists[oldId]['title'], missing)
+
+if foundNew:
+  print("\nFYI: There are new members in your list(s) and/or you have new list(s), so once you've fixed any missing members (if any),")
+  print(f"I recommend you save the current state of your lists back into '{SAVEFILE}' by running (WARNING: it will OVERWRITE what's there):")
+  print(sys.argv[0], "--savecurrent")
+  print()
+
+sys.exit(0)
