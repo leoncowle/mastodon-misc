@@ -85,8 +85,8 @@ from mastodon import Mastodon
 TOKEN = os.environ["MASTOLISTTOKEN"]          # Mastodon access_token, needs read:lists permission
 INSTANCE = "hachyderm.io"                     # NB: only the domain -- don't add http:// or https://, or the api path
 SAVEFILE = "masto_get_list_members.json"      # File you want to save the current state of your lists into
-debug = False                                 # Change this to True to also show accounts that exist in your current lists AND in the saved file
-postToMasto = False                           # Change this to True if you want to post the missing accounts to Mastodon
+debug = True                                 # Change this to True to also show accounts that exist in your current lists AND in the saved file
+postToMasto = False                            # Change this to True if you want to post the missing accounts to Mastodon
 ########################################################
 
 ########################################################
