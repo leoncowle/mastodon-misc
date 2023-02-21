@@ -8,7 +8,7 @@ If you make use of Lists in Mastodon, you may not realize an important caveat: i
 Mastodon account from one instance/server to another, Mastodon will (very likely) automatically follow their new account
 for you. 
 
-**HOWEVER, if you had them in a Mastodon List, their old account will SILENTLY drop out of the List, and their
+**HOWEVER, if you had them in a Mastodon List, their old account will SILENTLY drop out of your List, and their
 new account will NOT be added back into the List.**
 
 This PipeDream workflow warns you when this happens.
@@ -23,7 +23,7 @@ This isn't meant to be a detailed instructional tutorial on how to get started w
 
 But because this project was inspired by Stefan Bohacek
 (https://stefanbohacek.com/blog/automating-your-mastodon-profile-with-pipedream-com/ and you can find Stefan on Mastodon
-at https://stefanbohacek.online/@stefan), you can you read _that_ blog post for a great writeup of how to set up 
+at https://stefanbohacek.online/@stefan), you can go read _that_ blog post for a great writeup of how to set up 
 PipeDream! Thanks Stefan.
 
 **Few points of note for my project:**
